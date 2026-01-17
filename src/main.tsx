@@ -85,7 +85,7 @@ function xyBriToHex(x, y, bri = 254) {
 function mirekToHex(mirek) {
   if (typeof mirek !== "number" || mirek <= 0) return null;
   const kelvin = 1_000_000 / mirek;
-  let temp = kelvin / 100;
+  const temp = kelvin / 100;
   let r;
   let g;
   let b;
@@ -186,7 +186,6 @@ const SceneList = () => {
   const [error, setError] = useState(null);
   const [selected, setSelected] = useState(0);
   const [message, setMessage] = useState("");
-  const [activating, setActivating] = useState(false);
   const [setMode, setSetMode] = useState(false);
   const [brightnessMode, setBrightnessMode] = useState(false);
   const [brightness, setBrightness] = useState(100);
@@ -249,7 +248,6 @@ const SceneList = () => {
   const doActivate = (scene) => {
     if (!scene) return;
     (async () => {
-      setActivating(true);
       setMessage("");
       try {
         await activateScene(scene.id, scene.type);
@@ -271,8 +269,6 @@ const SceneList = () => {
         }
       } catch (err) {
         setMessage(`Failed to activate: ${err.message ?? err}`);
-      } finally {
-        setActivating(false);
       }
     })();
   };
