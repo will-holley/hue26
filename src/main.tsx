@@ -1,6 +1,7 @@
 #!/usr/bin/env -S npx tsx
 import React, { useEffect, useState } from "react";
 import { render, Box, Text, useApp, useInput } from "ink";
+import Gradient from "ink-gradient";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -35,16 +36,26 @@ const fetchJson = async (path, init = {}) => {
 
 const activateScene = async (sceneId, sceneType = "scene") => {
   const resourceType = sceneType === "smart_scene" ? "smart_scene" : "scene";
-  return fetch(
+  // Smart scenes use "activate" action, regular scenes use "active"
+  const action = sceneType === "smart_scene" ? "activate" : "active";
+  const res = await fetch(
     `https://${BRIDGE_IP}/clip/v2/resource/${resourceType}/${sceneId}`,
     {
       method: "PUT",
       headers: {
         "hue-application-key": API_TOKEN,
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({ recall: { action: "active" } }),
+      body: JSON.stringify({ recall: { action } }),
     },
-  ).then((res) => res.json());
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text || res.statusText}`);
+  }
+
+  return res.json();
 };
 
 function xyBriToHex(x, y, bri = 254) {
@@ -155,15 +166,15 @@ function extractColors(scene) {
   return deduped.length ? deduped : ["#444444"];
 }
 
-const Swatches = ({ colors }) => (
-  <Box marginLeft={1}>
-    {colors.map((c, i) => (
-      <Text key={`${c}-${i}`} backgroundColor={c}>
-        {"  "}
-      </Text>
-    ))}
-  </Box>
-);
+const Swatches = ({ colors }) => {
+  // Gradient requires at least 2 colors, duplicate if only 1
+  const gradientColors = colors.length < 2 ? [...colors, ...colors] : colors;
+  return (
+    <Box marginLeft={1}>
+      <Gradient colors={gradientColors}>{"████████████████"}</Gradient>
+    </Box>
+  );
+};
 
 const BrightnessBar = ({ level }) => {
   const barWidth = 20;
@@ -370,11 +381,13 @@ const SceneList = () => {
       </Box>
       <Box flexDirection="column" marginTop={1}>
         {scenes.map((scene, idx) => (
-          <Box key={scene.id} marginBottom={0}>
-            <Text color={idx === selected ? "cyan" : "white"}>
-              {idx === selected ? "› " : "  "}
-              {scene.name}
-            </Text>
+          <Box key={scene.id} marginBottom={1}>
+            <Box width={40}>
+              <Text color={idx === selected ? "cyan" : "white"}>
+                {idx === selected ? "› " : "  "}
+                {scene.name}
+              </Text>
+            </Box>
             <Swatches colors={scene.colors} />
           </Box>
         ))}
