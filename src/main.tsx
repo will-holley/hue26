@@ -201,6 +201,7 @@ const SceneList = () => {
   const [brightnessMode, setBrightnessMode] = useState(false);
   const [brightness, setBrightness] = useState(100);
   const [lights, setLights] = useState([]);
+  const [lightsOn, setLightsOn] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -238,6 +239,8 @@ const SceneList = () => {
         const lightsArray = lightData?.data ?? [];
         setLights(lightsArray);
         if (lightsArray.length > 0) {
+          const anyOn = lightsArray.some((l) => l.on?.on);
+          setLightsOn(anyOn);
           const onLights = lightsArray.filter((l) => l.on?.on);
           if (onLights.length > 0) {
             const avgBrightness =
@@ -268,6 +271,8 @@ const SceneList = () => {
         const lightsArray = lightData?.data ?? [];
         setLights(lightsArray);
         if (lightsArray.length > 0) {
+          const anyOn = lightsArray.some((l) => l.on?.on);
+          setLightsOn(anyOn);
           const onLights = lightsArray.filter((l) => l.on?.on);
           if (onLights.length > 0) {
             const avgBrightness =
@@ -302,6 +307,36 @@ const SceneList = () => {
     }
   };
 
+  const toggleAllLights = async () => {
+    try {
+      // Check if any lights are currently on
+      const anyLightsOn = lights.some((light) => light.on?.on);
+      const targetState = !anyLightsOn;
+
+      // Turn all lights on or off
+      await Promise.all(
+        lights.map((light) =>
+          fetch(`https://${BRIDGE_IP}/clip/v2/resource/light/${light.id}`, {
+            method: "PUT",
+            headers: { "hue-application-key": API_TOKEN },
+            body: JSON.stringify({ on: { on: targetState } }),
+          }),
+        ),
+      );
+
+      // Refresh light state
+      const lightData = await fetchJson("/clip/v2/resource/light");
+      const lightsArray = lightData?.data ?? [];
+      setLights(lightsArray);
+      setLightsOn(targetState);
+
+      setMessage(`${targetState ? "On" : "Off"}`);
+      setTimeout(() => setMessage(""), 2000);
+    } catch (err) {
+      setMessage(`Failed to toggle lights: ${err.message ?? err}`);
+    }
+  };
+
   useInput(
     (input, key) => {
       if (key.escape || input === "q") {
@@ -316,6 +351,10 @@ const SceneList = () => {
       if (input === "b" || input === "B") {
         setBrightnessMode((m) => !m);
         setSetMode(false);
+        return;
+      }
+      if (input === "o" || input === "O") {
+        toggleAllLights();
         return;
       }
       if (brightnessMode) {
@@ -373,11 +412,17 @@ const SceneList = () => {
         ) : (
           "to move"
         )}
-        , Enter to activate, S scene mode, B brightness, q quit)
+        , Enter to activate, S scene mode, B brightness, O toggle on/off, q quit)
       </Text>
       <Box marginTop={1}>
         <BrightnessBar level={brightness} />
         {brightnessMode && <Text color="magenta"> ◀ adjusting</Text>}
+        {!brightnessMode && (
+          <Text color={lightsOn ? "green" : "gray"}>
+            {" "}
+            💡 {message || (lightsOn ? "On" : "Off")}
+          </Text>
+        )}
       </Box>
       <Box flexDirection="column" marginTop={1}>
         {scenes.map((scene, idx) => (
@@ -392,11 +437,6 @@ const SceneList = () => {
           </Box>
         ))}
       </Box>
-      {message && (
-        <Text color={message.startsWith("Failed") ? "red" : "green"}>
-          {message}
-        </Text>
-      )}
     </Box>
   );
 };
