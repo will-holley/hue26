@@ -9,3 +9,7 @@ Examples:
 - Add a package: `pnpm add <package-name>`
 - Add a dev dependency: `pnpm add -D <package-name>`
 - Run scripts: `pnpm run <script-name>` or `pnpm <script-name>`
+
+## Project Structure
+
+Source code is located in `/src`
